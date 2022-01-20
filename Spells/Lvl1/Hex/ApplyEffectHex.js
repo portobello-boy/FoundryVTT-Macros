@@ -4,8 +4,10 @@ console.log("-- APPLY EFFECT HEX  --")
 
 const spellItem = await fromUuid(args[0].itemUuid)
 const hexUuid = args[0].itemUuid
+const spellSlot = args[0].powerLevel
 const stat = args[1]
 const targetToken = args[2]
+const hookIdHexDamage = args[3]
 
 let hexEffectIds = []
 
@@ -19,7 +21,7 @@ const hexEffect = {
     label: spellItem.name,
     icon: spellItem.img,
     duration: {
-        "seconds": 3600, startTime: game.time.worldTime
+        "seconds": 3600 * (spellSlot >= 5 ? 24 : (spellSlot >= 3 ? 8 : 1)), startTime: game.time.worldTime
     },
 }
 
@@ -38,13 +40,13 @@ new Sequence()
     .effect()
     .file("modules/JB2A_DnD5e/Library/Generic/Marker/MarkerHorror_03_Regular_Purple_400x400.webm")
     .attachTo(target)
-    .scale(0.6)
+    .scale(targetToken.data.width < 2 ? 0.6 : 1)
     .persist()
     .name(`Hex-${hexEffectId}`)
     .fadeIn(1500, { ease: "easeOutCubic", delay: 500 })
     .fadeOut(1500)
     .opacity(0.7)
-    .belowTokens(true)
+    .belowTokens(targetToken.data.width < 3 ? true : false)
     .play()
 
 // When the effect ends, remove hex effects on the target token
@@ -56,5 +58,6 @@ async function removeHexEffect(effect) {
 
     Sequencer.EffectManager.endEffects({ name: `Hex-${effect.id}` });
 
+    Hooks.off("midi-qol.RollComplete", hookIdHexDamage)
     Hooks.off("preDeleteActiveEffect", hookIdRemoveHex)
 }

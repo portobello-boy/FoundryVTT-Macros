@@ -7,8 +7,8 @@ const hexUuid = args[0].itemUuid
 
 let hexEffectIds = []
 
-// Apply hooks
-let hookIdHexDamage = Hooks.on("midi-qol.RollComplete", (workflow) => addHexDamage(workflow))
+// Set hookId variable
+let hookIdHexDamage = 0
 
 // Create dialogue popup
 new Dialog({
@@ -38,8 +38,11 @@ new Dialog({
           // If the target token already has hex applied, return
           if (targetToken.actor.effects._source.find((ae) => ae.origin == hexUuid)) return
 
+          // Apply hook
+          hookIdHexDamage = Hooks.on("midi-qol.RollComplete", (workflow) => addHexDamage(workflow))
+
           // Call the GM-level Apply-Effect-Hex macro
-          game.macros.getName("Apply-Effect-Hex").execute(args[0], stat, targetToken)
+          game.macros.getName("Apply-Effect-Hex").execute(args[0], stat, targetToken, hookIdHexDamage)
         })
       },
     },
@@ -115,6 +118,4 @@ async function addHexDamage(workflow) {
   // Insert hex result into attack card and update
   content = await content.replace(searchString, replaceString)
   await chatMessage.update({ content: content })
-
-  Hooks.off("midi-qol.RollComplete", hookIdHexDamage)
 }
