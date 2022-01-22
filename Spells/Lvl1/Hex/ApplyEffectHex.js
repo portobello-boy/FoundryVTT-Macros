@@ -7,7 +7,6 @@ const hexUuid = args[0].itemUuid
 const spellSlot = args[0].powerLevel
 const stat = args[1]
 const targetToken = args[2]
-const hookIdHexDamage = args[3]
 
 let hexEffectIds = []
 
@@ -60,6 +59,7 @@ async function removeHexEffect(effect) {
 
     Sequencer.EffectManager.endEffects({ name: `Hex-${effect.id}` });
 
-    Hooks.off("midi-qol.RollComplete", hookIdHexDamage)
+    console.log(`Removing hooks ${hookIdRemoveHex} (hookIdRemoveHex)`)
+
     Hooks.off("preDeleteActiveEffect", hookIdRemoveHex)
 }
