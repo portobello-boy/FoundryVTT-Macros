@@ -5,7 +5,6 @@ let tokenD = canvas.tokens.get(args[1].tokenId)
 //console.log(token)
 
 if (args[0] == "on") {
-
   new Sequence()
     .effect()
       .file("modules/JB2A_DnD5e/Library/Generic/Fire/FireRing_01_Circle_Red_500.webm")

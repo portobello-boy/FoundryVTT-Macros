@@ -1,6 +1,6 @@
 // This macro must have GM permissions to properly execute
 
-console.log("-- APPLY EFFECT HEX  --")
+console.log("-- APPLY EFFECT HEX --")
 
 const spellItem = await fromUuid(args[0].itemUuid)
 const hexUuid = args[0].itemUuid
@@ -11,7 +11,7 @@ const targetToken = args[2]
 let hexEffectIds = []
 
 // Apply hooks
-let hookIdRemoveHex = Hooks.on("preDeleteActiveEffect", (effect) => removeHexEffect(effect))
+const hookIdRemoveHex = Hooks.on("preDeleteActiveEffect", (effect) => removeHexEffect(effect))
 
 // Create active effect for hex
 const hexEffect = {
