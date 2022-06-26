@@ -10,7 +10,7 @@ if (args[0] == "on") {
         .effect()
         .file("modules/JB2A_DnD5e/Library/Generic/Marker/MarkerShield_03_Regular_Green_400x400.webm")
         .attachTo(tokenD)
-        .scale(0.5)
+        .scale(0.75)
         .persist()
         .name(`BladeWard-${tokenD.id}`)
         .fadeIn(1500, { ease: "easeOutCubic", delay: 500 })
