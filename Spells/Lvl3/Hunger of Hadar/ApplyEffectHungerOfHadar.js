@@ -12,10 +12,12 @@ const targets = args[0].targets
 let hadarVictims = []
 
 // Retrieve values for template calculations
+const canvasGridSize = game.scenes.current.dimensions.size
+const canvasGridDistance = game.scenes.current.dimensions.distance
 const templateCenterX = templateD.data.x
 const templateCenterY = templateD.data.y
 const templateRadius = templateD.shape.radius
-const canvasGridSize = game.scenes.current.dimensions.size
+const templateRadiusFeet = (templateRadius/canvasGridSize) * canvasGridDistance
 
 // Helper - Apply Blinded effect to target
 function addBlindness(target) {
@@ -81,6 +83,42 @@ new Sequence()
     .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
   .play()
 
+// Create Ambient Sounds
+const soundData = [{
+    x: templateCenterX,
+    y: templateCenterY,
+    radius: templateRadiusFeet + 2*canvasGridDistance,
+    path: "music/Sound%20Effects/Spells/hungerOfHadar/horrorVoice.mp3",
+    repeat: true,
+    volume: 0.5,
+    walls: true,
+    easing: true,
+    hidden: false,
+    darkness: {min: 0, max: 1}
+  },
+  {
+    x: templateCenterX,
+    y: templateCenterY,
+    radius: templateRadiusFeet + 2*canvasGridDistance,
+    path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
+    repeat: true,
+    volume: 0.5,
+    walls: true,
+    easing: true,
+    hidden: false,
+    darkness: {min: 0, max: 1}
+}];
+
+// Place Ambient Sounds in the scene
+const ambientSounds = await canvas.scene.createEmbeddedDocuments("AmbientSound", soundData);
+console.log(ambientSounds)
+let ambientSoundIds = []
+
+ambientSounds.forEach((sound) => {
+  console.log(sound)
+  ambientSoundIds.push(sound.id)
+})
+
 async function hungerOfHadarTemplateDeleted(templateDocument) {
     // If the template deleted isn't the Hunger of Hadar template, ignore
     if(templateDocument !== templateD.document) return;
@@ -107,6 +145,9 @@ async function hungerOfHadarTemplateDeleted(templateDocument) {
       const target = canvas.tokens.get(targetId)
       game.cub.removeCondition("Blinded", target)
     })
+
+    console.log(ambientSoundIds)
+    await canvas.scene.deleteEmbeddedDocuments("AmbientSound", ambientSoundIds)
     
     // Remove hooks
     Hooks.off("preDeleteMeasuredTemplate", hookIdHungerOfHadarOutro);
