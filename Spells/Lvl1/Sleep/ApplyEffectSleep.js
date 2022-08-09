@@ -18,7 +18,7 @@ sleepVictims.forEach((targetToken) => {
     .effect()
       .file("modules/JB2A_DnD5e/Library/1st_Level/Sleep/Cloud01_01_Regular_Pink_400x400.webm")
       .attachTo(target)
-      .scale(0.5)
+      .scale(0.5 * target.data.width)
       .opacity(0.6)
       .name(`Sleep-${target.id}`)
       .fadeIn(1000, { ease: "easeOutCubic", delay: 0 })
@@ -63,3 +63,8 @@ async function removeUnconsciousCondition(tokenDocument, changes, targetId, hook
     // Remove hook
     Hooks.off("updateToken", hookIdDamageApplied)
 }
+
+/*
+  TODO:
+    Adjust animation for large creatures
+*/

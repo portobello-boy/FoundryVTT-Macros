@@ -1,11 +1,12 @@
 // This macro must have GM permissions to properly execute
 
 console.log("-- APPLY EFFECT HUNGER OF HADAR --")
+
 console.log(args)
 
 // Store arguments
-const caster = args[0].actor
-const spell = await fromUuid(args[0].uuid)
+const caster = await fromUuid(args[0].actorUuid)
+const spell = await fromUuid(args[0].itemUuid)
 const templateD = canvas.templates.get(args[0].templateId)
 const concentrationId = args[0].itemUuid
 const targets = args[0].targets
@@ -21,7 +22,9 @@ const templateRadiusFeet = (templateRadius/canvasGridSize) * canvasGridDistance
 
 // Helper - Apply Blinded effect to target
 function addBlindness(target) {
-  const effects = target.actor.effects.filter(e => e.data.label == "Blinded")
+  console.log(target)
+  const actor = target.actor ? target.actor : game.actors.get(target.actorId)
+  const effects = actor.effects.filter(e => e.data.label == "Blinded")
 
   if (effects.length != 0) return
 
@@ -88,7 +91,7 @@ const soundData = [{
     x: templateCenterX,
     y: templateCenterY,
     radius: templateRadiusFeet + 2*canvasGridDistance,
-    path: "music/Sound%20Effects/Spells/hungerOfHadar/horrorVoice.mp3",
+    path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
     repeat: true,
     volume: 0.5,
     walls: true,
@@ -100,9 +103,9 @@ const soundData = [{
     x: templateCenterX,
     y: templateCenterY,
     radius: templateRadiusFeet + 2*canvasGridDistance,
-    path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
+    path: "music/Sound%20Effects/Spells/hungerOfHadar/squelching.mp3",
     repeat: true,
-    volume: 0.5,
+    volume: 1,
     walls: true,
     easing: true,
     hidden: false,
@@ -168,11 +171,13 @@ async function hungerOfHadarConcentrationEnd(effect, render, id) {
 
 async function hungerOfHadarUpdateToken(tokenDoc, delta, flags, actor) {
   // Get token center coordinates
-  const tokenCenterX = tokenDoc.data.x + canvasGridSize / 2
-  const tokenCenterY = tokenDoc.data.y + canvasGridSize / 2
+  const tokenCenterX = tokenDoc.data.x + (canvasGridSize * tokenDoc.data.width) / 2
+  const tokenCenterY = tokenDoc.data.y + (canvasGridSize * tokenDoc.data.width) / 2
 
   // Calculate distance to template center
   const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
+
+  console.log(tokenDoc, templateCenterX, templateCenterY, tokenCenterX, tokenCenterY, distance)
 
   // Add or remove blindness appropriately
   if (distance <= templateRadius) {
@@ -201,8 +206,8 @@ async function hungerOfHadarUpdateCombat(combat, turn, delta, playerId) {
 
 async function applyBeginTurnDamage(token) {
   // Get token center coordinates
-  const tokenCenterX = token.x + canvasGridSize / 2
-  const tokenCenterY = token.y + canvasGridSize / 2
+  const tokenCenterX = token.data.x + (canvasGridSize * token.data.width) / 2
+  const tokenCenterY = token.data.y + (canvasGridSize * token.data.width) / 2
 
   // Calculate distance to template center
   const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
@@ -254,8 +259,8 @@ async function applyBeginTurnDamage(token) {
 
 async function applyEndTurnDamage(token) {
   // Get token center coordinates
-  const tokenCenterX = token.x + canvasGridSize / 2
-  const tokenCenterY = token.y + canvasGridSize / 2
+  const tokenCenterX = token.data.x + (canvasGridSize * token.data.width) / 2
+  const tokenCenterY = token.data.y + (canvasGridSize * token.data.width) / 2
 
   // Calculate distance to template center
   const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
@@ -310,3 +315,8 @@ const hookIdHungerOfHadarOutro = Hooks.on("preDeleteMeasuredTemplate", (template
 const hookIdConcentrationEnd = Hooks.on("deleteActiveEffect", (effect, render, id) => hungerOfHadarConcentrationEnd(effect, render, id));
 const hookIdUpdateToken = Hooks.on("updateToken", (tokenDoc, delta, flags, actor) => hungerOfHadarUpdateToken(tokenDoc, delta, flags, actor));
 const hookIdUpdateCombat = Hooks.on("updateCombat", (combat, turn, delta, playerId) => hungerOfHadarUpdateCombat(combat, turn, delta, playerId));
+
+/*
+    TODO:
+        Correctly apply blinded effect to large+ entities
+*/
