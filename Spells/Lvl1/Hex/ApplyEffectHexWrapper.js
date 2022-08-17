@@ -1,7 +1,5 @@
 console.log("-- APPLY EFFECT HEX WRAPPER --")
 
-console.log(args)
-
 const spellTargets = args[0].targets
 const spellActor = await fromUuid(args[0].actorUuid)
 const spellItem = await fromUuid(args[0].itemUuid)
@@ -60,20 +58,14 @@ async function addHexDamage(workflow) {
   // If damage is triggered by hex itself, don't apply it
   if (workflow.itemUuid == hexUuid) return
 
-  console.log("DAMAGE NOT TRIGGERED BY HEX")
-
   // Retrieve damaged targets which have the hex effect
   const targets = [...workflow.applicationTargets].filter((target) => target.document.actor.data.effects._source.find((ae) => ae.origin == hexUuid))
 
   // If there are no targets with this hex effect, return
   if (!targets.length) return
 
-  console.log("TARGET HAS HEX EFFECT")
-
   // If the aggressor is not the caster of this hex effect, return
   if (workflow.actor.id != spellActor.id) return
-
-  console.log("ALL CHECKS PASSED")
 
   // Retrieve attack card data
   const itemCardId = workflow.itemCardId
@@ -86,8 +78,6 @@ async function addHexDamage(workflow) {
   game.dice3d.showForRoll(damageRoll, game.user, true)
     .then(async (rolled) => {
       if (!rolled) return
-
-      console.log("Roll complete")
       
       targets.forEach((target) => {
         // Apply damage to token using the Hex spellItem
