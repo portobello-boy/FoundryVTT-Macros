@@ -1,13 +1,15 @@
 console.log("-- APPLY EFFECT HEX WRAPPER --")
 
+console.log(args)
+
 const spellTargets = args[0].targets
-const spellActor = args[0].actor
+const spellActor = await fromUuid(args[0].actorUuid)
 const spellItem = await fromUuid(args[0].itemUuid)
 const hexUuid = args[0].itemUuid
 
 // Set hookId variable
-let hookIdHexDamage = 0
-let hookIdRemoveHexDamage = 0
+let hookIdHexDamage = -1
+let hookIdRemoveHexDamage = -1
 
 // Create dialogue popup
 new Dialog({
@@ -58,14 +60,20 @@ async function addHexDamage(workflow) {
   // If damage is triggered by hex itself, don't apply it
   if (workflow.itemUuid == hexUuid) return
 
+  console.log("DAMAGE NOT TRIGGERED BY HEX")
+
   // Retrieve damaged targets which have the hex effect
   const targets = [...workflow.applicationTargets].filter((target) => target.document.actor.data.effects._source.find((ae) => ae.origin == hexUuid))
 
   // If there are no targets with this hex effect, return
   if (!targets.length) return
 
+  console.log("TARGET HAS HEX EFFECT")
+
   // If the aggressor is not the caster of this hex effect, return
-  if (workflow.actor.id != spellActor._id) return
+  if (workflow.actor.id != spellActor.id) return
+
+  console.log("ALL CHECKS PASSED")
 
   // Retrieve attack card data
   const itemCardId = workflow.itemCardId
@@ -141,3 +149,8 @@ async function removeHexDamage(effect) {
   Hooks.off("midi-qol.RollComplete", hookIdHexDamage)
   Hooks.off("deleteActiveEffect", hookIdRemoveHexDamage)
 }
+
+/*
+  TODO:
+    Refactor code so most of it is in the GM level macro
+*/

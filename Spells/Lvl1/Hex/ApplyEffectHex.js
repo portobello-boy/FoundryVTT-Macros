@@ -2,6 +2,8 @@
 
 console.log("-- APPLY EFFECT HEX --")
 
+console.log(args)
+
 const spellItem = await fromUuid(args[0].itemUuid)
 const hexUuid = args[0].itemUuid
 const spellSlot = args[0].powerLevel
