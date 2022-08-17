@@ -2,8 +2,6 @@
 
 console.log("-- APPLY EFFECT HUNGER OF HADAR --")
 
-console.log(args)
-
 // Store arguments
 const caster = await fromUuid(args[0].actorUuid)
 const spell = await fromUuid(args[0].itemUuid)
@@ -11,6 +9,7 @@ const templateD = canvas.templates.get(args[0].templateId)
 const concentrationId = args[0].itemUuid
 const targets = args[0].targets
 let hadarVictims = []
+let ambientSoundIds = []
 
 // Retrieve values for template calculations
 const canvasGridSize = game.scenes.current.dimensions.size
@@ -42,151 +41,6 @@ function removeBlindness(target) {
   }
 }
 
-// Apply Blinded to each target
-targets.forEach((target) => {
-  addBlindness(target)
-})
-
-// Apply Sequencer effects to 
-new Sequence()
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleIntro_02_Dark_Yellow_800x800.webm")
-    .attachTo(templateD)
-    .zIndex(0)
-    .name(`HungerOfHadar-Intro-Circle-${templateD.id}`)
-    .waitUntilFinished(-800)
-    .belowTokens()
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleLoop_02_Dark_Yellow_800x800.webm")
-    .attachTo(templateD)
-    .persist()
-    .zIndex(0)
-    .name(`HungerOfHadar-Loop-Circle-${templateD.id}`)
-    .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
-    .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
-    .belowTokens()
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/1st_Level/Arms_Of_Hadar/ArmsOfHadar_01_Dark_Purple_500x500.webm")
-    .attachTo(templateD)
-    .persist()
-    .zIndex(1)
-    .scale(2)
-    .name(`HungerOfHadar-Loop-Tentacles-${templateD.id}`)
-    .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
-    .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/2nd_Level/Darkness/Darkness_01_Black_600x600.webm")
-    .attachTo(templateD)
-    .persist()
-    .zIndex(2)
-    .opacity(0.95)
-    .scale(1.4)
-    .name(`HungerOfHadar-Loop-Darkness-${templateD.id}`)
-    .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
-    .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
-  .play()
-
-// Create Ambient Sounds
-const soundData = [{
-    x: templateCenterX,
-    y: templateCenterY,
-    radius: templateRadiusFeet + 2*canvasGridDistance,
-    path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
-    repeat: true,
-    volume: 0.5,
-    walls: true,
-    easing: true,
-    hidden: false,
-    darkness: {min: 0, max: 1}
-  },
-  {
-    x: templateCenterX,
-    y: templateCenterY,
-    radius: templateRadiusFeet + 2*canvasGridDistance,
-    path: "music/Sound%20Effects/Spells/hungerOfHadar/squelching.mp3",
-    repeat: true,
-    volume: 1,
-    walls: true,
-    easing: true,
-    hidden: false,
-    darkness: {min: 0, max: 1}
-}];
-
-// Place Ambient Sounds in the scene
-const ambientSounds = await canvas.scene.createEmbeddedDocuments("AmbientSound", soundData);
-console.log(ambientSounds)
-let ambientSoundIds = []
-
-ambientSounds.forEach((sound) => {
-  console.log(sound)
-  ambientSoundIds.push(sound.id)
-})
-
-async function hungerOfHadarTemplateDeleted(templateDocument) {
-    // If the template deleted isn't the Hunger of Hadar template, ignore
-    if(templateDocument !== templateD.document) return;
-
-    // Play outro animation
-    new Sequence()
-      .effect()
-        .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleOutro_02_Dark_Yellow_800x800.webm")
-        .atLocation(templateD, { cacheLocation: true })
-        .zIndex(0)
-        .startTime(500)
-        .name(`HungerOfHadar-Outro-Circle-${templateD.id}`)
-        .belowTokens()
-      .play()
-
-    // End all existing Sequencer effects
-    Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Intro-Circle-${templateD.id}`, object: templateD })
-    Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Circle-${templateD.id}`, object: templateD })
-    Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Tentacles-${templateD.id}`, object: templateD })
-    Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Darkness-${templateD.id}`, object: templateD })
-
-    // Remove Blinded from remaining targets
-    hadarVictims.forEach((targetId) => {
-      const target = canvas.tokens.get(targetId)
-      game.cub.removeCondition("Blinded", target)
-    })
-
-    console.log(ambientSoundIds)
-    await canvas.scene.deleteEmbeddedDocuments("AmbientSound", ambientSoundIds)
-    
-    // Remove hooks
-    Hooks.off("preDeleteMeasuredTemplate", hookIdHungerOfHadarOutro);
-    Hooks.off("updateToken", hookIdUpdateToken);
-    Hooks.off("updateCombat", hookIdUpdateCombat);
-}
-
-async function hungerOfHadarConcentrationEnd(effect, render, id) {
-    // If the concentration ending doesn't belong to the Hunger of Hadar spell, ignore
-    if (effect.data.origin != concentrationId) return
-  
-    // Delete the template
-    canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [templateD.id]);
-  
-    // Remove hook
-    Hooks.off("deleteActiveEffect", hookIdConcentrationEnd)
-}
-
-async function hungerOfHadarUpdateToken(tokenDoc, delta, flags, actor) {
-  // Get token center coordinates
-  const tokenCenterX = tokenDoc.data.x + (canvasGridSize * tokenDoc.data.width) / 2
-  const tokenCenterY = tokenDoc.data.y + (canvasGridSize * tokenDoc.data.width) / 2
-
-  // Calculate distance to template center
-  const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
-
-  console.log(tokenDoc, templateCenterX, templateCenterY, tokenCenterX, tokenCenterY, distance)
-
-  // Add or remove blindness appropriately
-  if (distance <= templateRadius) {
-    addBlindness(tokenDoc)
-  } else {
-    removeBlindness(tokenDoc)
-  }
-}
-
 // Helper - Get distance using Euclidean formula
 function getDistance(sourceX, sourceY, destX, destY) {
   const deltaX = sourceX - destX
@@ -194,23 +48,19 @@ function getDistance(sourceX, sourceY, destX, destY) {
   return Math.sqrt(deltaX ** 2 + deltaY ** 2)
 }
 
-async function hungerOfHadarUpdateCombat(combat, turn, delta, playerId) {
-  // Get current and previous combat tokens
-  const currentToken = canvas.tokens.get(combat.current.tokenId);
-  const previousToken = canvas.tokens.get(combat.previous.tokenId);
-
-  // Check and apply damage to tokens
-  await applyEndTurnDamage(previousToken);
-  await applyBeginTurnDamage(currentToken);
-}
-
-async function applyBeginTurnDamage(token) {
+// Helper - Get distance between token and Hunger of Hadar center
+function getDistanceFromSpellTemplate(token, templateD) {
   // Get token center coordinates
   const tokenCenterX = token.data.x + (canvasGridSize * token.data.width) / 2
   const tokenCenterY = token.data.y + (canvasGridSize * token.data.width) / 2
 
-  // Calculate distance to template center
-  const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
+  return getDistance(tokenCenterX, tokenCenterY, templateD.data.x, templateD.data.y)
+}
+
+// Helper - Apply damage at the beginning of a token's turn
+async function applyBeginTurnDamage(token) {
+  // Calculate distance from token to template center
+  const distance = getDistanceFromSpellTemplate(token, templateD)
 
   // If not within radius of Hunger of Hadar, ignore
   if (distance > templateRadius) return
@@ -257,13 +107,10 @@ async function applyBeginTurnDamage(token) {
   await MidiQOL.completeItemRoll(item, options);
 }
 
+// Helper - Apply damage at the end of a token's turn
 async function applyEndTurnDamage(token) {
-  // Get token center coordinates
-  const tokenCenterX = token.data.x + (canvasGridSize * token.data.width) / 2
-  const tokenCenterY = token.data.y + (canvasGridSize * token.data.width) / 2
-
-  // Calculate distance to template center
-  const distance = getDistance(templateCenterX, templateCenterY, tokenCenterX, tokenCenterY)
+  // Calculate distance from token to template center
+  const distance = getDistanceFromSpellTemplate(token, templateD)
 
   // If not within radius of Hunger of Hadar, ignore
   if (distance > templateRadius) return
@@ -310,11 +157,167 @@ async function applyEndTurnDamage(token) {
   await MidiQOL.completeItemRoll(item, options);
 }
 
+async function applyEffect() {
+  // Apply Blinded to each target
+  targets.forEach((target) => {
+    addBlindness(target)
+  })
+  
+  // Apply Sequencer effects to 
+  new Sequence()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleIntro_02_Dark_Yellow_800x800.webm")
+      .attachTo(templateD)
+      .zIndex(0)
+      .name(`HungerOfHadar-Intro-Circle-${templateD.id}`)
+      .waitUntilFinished(-800)
+      .belowTokens()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleLoop_02_Dark_Yellow_800x800.webm")
+      .attachTo(templateD)
+      .persist()
+      .zIndex(0)
+      .name(`HungerOfHadar-Loop-Circle-${templateD.id}`)
+      .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
+      .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
+      .belowTokens()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/1st_Level/Arms_Of_Hadar/ArmsOfHadar_01_Dark_Purple_500x500.webm")
+      .attachTo(templateD)
+      .persist()
+      .zIndex(1)
+      .scale(2)
+      .name(`HungerOfHadar-Loop-Tentacles-${templateD.id}`)
+      .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
+      .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/2nd_Level/Darkness/Darkness_01_Black_600x600.webm")
+      .attachTo(templateD)
+      .persist()
+      .zIndex(2)
+      .opacity(0.95)
+      .scale(1.4)
+      .name(`HungerOfHadar-Loop-Darkness-${templateD.id}`)
+      .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
+      .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
+    .play()
+
+    // Create Ambient Sounds
+    const soundData = [{
+        x: templateD.data.x,
+        y: templateD.data.y,
+        radius: templateRadiusFeet + 2*canvasGridDistance,
+        path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
+        repeat: true,
+        volume: 0.5,
+        walls: true,
+        easing: true,
+        hidden: false,
+        darkness: {min: 0, max: 1}
+      },
+      {
+        x: templateD.data.x,
+        y: templateD.data.y,
+        radius: templateRadiusFeet + 2*canvasGridDistance,
+        path: "music/Sound%20Effects/Spells/hungerOfHadar/squelching.mp3",
+        repeat: true,
+        volume: 1,
+        walls: true,
+        easing: true,
+        hidden: false,
+        darkness: {min: 0, max: 1}
+    }];
+    
+    // Place Ambient Sounds in the scene
+    const ambientSounds = await canvas.scene.createEmbeddedDocuments("AmbientSound", soundData);
+    console.log(ambientSounds)
+    
+    ambientSounds.forEach((sound) => {
+      console.log(sound)
+      ambientSoundIds.push(sound.id)
+    })
+}
+
+async function removeEffect() {
+  // Play outro animation
+  new Sequence()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/Generic/Magic_Signs/ConjurationCircleOutro_02_Dark_Yellow_800x800.webm")
+      .atLocation(templateD, { cacheLocation: true })
+      .zIndex(0)
+      .startTime(500)
+      .name(`HungerOfHadar-Outro-Circle-${templateD.id}`)
+      .belowTokens()
+    .play()
+
+  // End all existing Sequencer effects
+  Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Intro-Circle-${templateD.id}`, object: templateD })
+  Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Circle-${templateD.id}`, object: templateD })
+  Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Tentacles-${templateD.id}`, object: templateD })
+  Sequencer.EffectManager.endEffects({ name: `HungerOfHadar-Loop-Darkness-${templateD.id}`, object: templateD })
+
+  // Remove Blinded from remaining targets
+  hadarVictims.forEach((targetId) => {
+    const target = canvas.tokens.get(targetId)
+    game.cub.removeCondition("Blinded", target)
+  })
+
+  console.log(ambientSoundIds)
+  await canvas.scene.deleteEmbeddedDocuments("AmbientSound", ambientSoundIds)
+}
+
+await applyEffect()
+
+async function hook_templateDeleted(templateDocument) {
+    // If the template deleted isn't the Hunger of Hadar template, ignore
+    if(templateDocument !== templateD.document) return;
+
+    removeEffect()
+    
+    // Remove hooks
+    Hooks.off("preDeleteMeasuredTemplate", hookId_templateDeleted);
+    Hooks.off("updateToken", hookId_updateToken);
+    Hooks.off("updateCombat", hookId_updateCombat);
+}
+
+async function hook_concentrationEnded(effect, render, id) {
+    // If the concentration ending doesn't belong to the Hunger of Hadar spell, ignore
+    if (effect.data.origin != concentrationId) return
+  
+    // Delete the template
+    canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [templateD.id]);
+  
+    // Remove hook
+    Hooks.off("deleteActiveEffect", hookId_deleteActiveEffect)
+}
+
+async function hook_tokenWithinTemplate(tokenDoc, delta, flags, actor) {
+  // Calculate distance from token to template center
+  const distance = getDistanceFromSpellTemplate(tokenDoc, templateD)
+
+  // Add or remove blindness appropriately
+  if (distance <= templateRadius) {
+    addBlindness(tokenDoc)
+  } else {
+    removeBlindness(tokenDoc)
+  }
+}
+
+async function hook_turnChangeDamage(combat, turn, delta, playerId) {
+  // Get current and previous combat tokens
+  const currentToken = canvas.tokens.get(combat.current.tokenId);
+  const previousToken = canvas.tokens.get(combat.previous.tokenId);
+
+  // Check and apply damage to tokens
+  await applyEndTurnDamage(previousToken);
+  await applyBeginTurnDamage(currentToken);
+}
+
 // Apply hooks
-const hookIdHungerOfHadarOutro = Hooks.on("preDeleteMeasuredTemplate", (templateDocument) => hungerOfHadarTemplateDeleted(templateDocument));
-const hookIdConcentrationEnd = Hooks.on("deleteActiveEffect", (effect, render, id) => hungerOfHadarConcentrationEnd(effect, render, id));
-const hookIdUpdateToken = Hooks.on("updateToken", (tokenDoc, delta, flags, actor) => hungerOfHadarUpdateToken(tokenDoc, delta, flags, actor));
-const hookIdUpdateCombat = Hooks.on("updateCombat", (combat, turn, delta, playerId) => hungerOfHadarUpdateCombat(combat, turn, delta, playerId));
+const hookId_templateDeleted = Hooks.on("preDeleteMeasuredTemplate", (templateDocument) => hook_templateDeleted(templateDocument));
+const hookId_deleteActiveEffect = Hooks.on("deleteActiveEffect", (effect, render, id) => hook_concentrationEnded(effect, render, id));
+const hookId_updateToken = Hooks.on("updateToken", (tokenDoc, delta, flags, actor) => hook_tokenWithinTemplate(tokenDoc, delta, flags, actor));
+const hookId_updateCombat = Hooks.on("updateCombat", (combat, turn, delta, playerId) => hook_turnChangeDamage(combat, turn, delta, playerId));
 
 /*
     TODO:

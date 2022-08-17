@@ -1,7 +1,6 @@
 // This macro must have GM permissions to properly execute
 
 console.log("-- APPLY EFFECT ARMOR OF AGATHYS --")
-console.log(args)
 
 // Store arguments
 const casterId = args[0].actorUuid
@@ -10,37 +9,41 @@ const casterToken = await fromUuid(args[0].tokenUuid)
 const spell = await fromUuid(args[0].itemUuid)
 const spellLevel = parseInt(args[0].spellLevel)
 
-// Add temp hp to caster
-await caster.update({"data.attributes.hp.temp": 5 * spellLevel});
+console.log(caster)
 
-// Add spell effects
-new Sequence()
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/Generic/Ice/ShieldIceBelow01_01_Regular_Blue_400x400.webm")
-    .attachTo(casterToken)
-    .scale(0.4)
-    .randomRotation()
-    .randomizeMirrorX()
-    .randomizeMirrorY()
-    .persist()
-    .name(`ArmorOfAgathys-Loop-Shield-Below-${caster.id}`)
-    .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
-    .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
-    .belowTokens()
-  .effect()
-    .file("modules/JB2A_DnD5e/Library/Generic/Ice/ShieldIceAbove01_01_Regular_Blue_400x400.webm")
-    .attachTo(casterToken)
-    .scale(0.4)
-    .randomRotation()
-    .randomizeMirrorX()
-    .randomizeMirrorY()
-    .persist()
-    .name(`ArmorOfAgathys-Loop-Shield-Above-${caster.id}`)
-    .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
-    .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
-  .play()
+async function applyEffect() {
+  // Add temp hp to caster
+  await caster.update({"data.attributes.hp.temp": 5 * spellLevel});
 
-async function removeArmorOfAgathys() {
+  // Add spell effects
+  new Sequence()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/Generic/Ice/ShieldIceBelow01_01_Regular_Blue_400x400.webm")
+      .attachTo(casterToken)
+      .scale(0.4)
+      .randomRotation()
+      .randomizeMirrorX()
+      .randomizeMirrorY()
+      .persist()
+      .name(`ArmorOfAgathys-Loop-Shield-Below-${caster.id}`)
+      .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
+      .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
+      .belowTokens()
+    .effect()
+      .file("modules/JB2A_DnD5e/Library/Generic/Ice/ShieldIceAbove01_01_Regular_Blue_400x400.webm")
+      .attachTo(casterToken)
+      .scale(0.4)
+      .randomRotation()
+      .randomizeMirrorX()
+      .randomizeMirrorY()
+      .persist()
+      .name(`ArmorOfAgathys-Loop-Shield-Above-${caster.id}`)
+      .fadeIn(500, { ease: "easeOutCubic", delay: 0 })
+      .fadeOut(2000, { ease: "easeOutCubic", delay: 0 })
+    .play()
+}
+
+async function removeEffect() {
   // Remove temp hp from caster
   await caster.update({"data.attributes.hp.temp": 0});
 
@@ -49,11 +52,14 @@ async function removeArmorOfAgathys() {
   Sequencer.EffectManager.endEffects({ name: `ArmorOfAgathys-Loop-Shield-Above-${caster.id}`})
 
   // Remove hooks
-  Gametime.ElapsedTime.gclearTimeout(hookIdArmorOfAgathysDurationDone)
-  Hooks.off("midi-qol.damageApplied", hookIdArmorOfAgathysDamageApplied);
+  Gametime.ElapsedTime.gclearTimeout(hookId_durationExpired)
+  Hooks.off("midi-qol.damageApplied", hookId_damageApplied)
+  Hooks.off("updateActor", hookId_updateActor)
 }
 
-async function armorOfAgathysDamageApplied(tokenDoc, delta) {
+await applyEffect()
+
+async function hook_DamageApplied(tokenDoc, delta) {
     // If the victim is not the same as the caster, ignore
     if (tokenDoc.actor.uuid != casterId) return;
 
@@ -111,20 +117,30 @@ async function armorOfAgathysDamageApplied(tokenDoc, delta) {
     // If the temp damage does not equal old temp hp, then there is remaining temp hp, and ignore
     if (delta.ditem.tempDamage != delta.ditem.oldTempHP) return;
 
-    removeArmorOfAgathys()
+    removeEffect()
+}
+
+async function hook_HealthChanged(actor, delta) {
+  if (actor.id != caster.id) return
+
+  if (delta.data.attributes?.hp?.temp == undefined) return
+
+  if (delta.data.attributes?.hp?.temp > 0) return
+
+  removeEffect()
 }
 
 // Apply hooks
-const hookIdArmorOfAgathysDamageApplied = Hooks.on("midi-qol.damageApplied", (tokenDoc, delta) => armorOfAgathysDamageApplied(tokenDoc, delta));
+const hookId_damageApplied = Hooks.on("midi-qol.damageApplied", (tokenDoc, delta) => hook_DamageApplied(tokenDoc, delta));
+const hookId_updateActor = Hooks.on("updateActor", (actor, delta, opts, playerId) => hook_HealthChanged(actor, delta))
 
 // Set timer to end Armor of Agathys effect
-const hookIdArmorOfAgathysDurationDone = Gametime.doIn(60 * 60, () => {
+const hookId_durationExpired = Gametime.doIn(60 * 60, () => {
   ui.notifications.notify(`${caster.name}'s Armor of Agathys is done!`)
-  removeArmorOfAgathys()
+  removeEffect()
 })
 
 /*
     TODO:
-        Cancel effect if temp HP is manually changed
         Try to time the impact damage effect from ranged attacks with the arrival of the projectile
 */
