@@ -6,7 +6,7 @@ const missed = args[0].hitTargets.length === 0
 
 new Sequence()
     .effect()
-        .file("modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/Quarterstaff02_0{{number}}_Regular_Purple_800x600.webm")
+        .file("customJB2AAssets/Weapons/Melee/Quarterstaff/Quarterstaff02_0{{number}}_Regular_Purple_800x600.webm")
         .setMustache({
             "number": () => {
                 return Math.floor(Math.random() * 6) + 1;
@@ -19,7 +19,7 @@ new Sequence()
         .missed(missed)
         .waitUntilFinished(-1000)
     .effect()
-        .file("modules/JB2A_DnD5e/Library/Generic/Weapon_Attacks/Melee/DmgBludgeoning_01_Regular_Yellow_2Handed_800x600.webm")
+        .file("customJB2AAssets/Weapons/Melee/Generic/WeaponAttack/DmgBludgeoning_01_Regular_Yellow_2Handed_800x600.webm")
         .atLocation(attacker)
         .stretchTo(target)
         .template({ gridSize: 200, startPoint: 300, endPoint: 300 })

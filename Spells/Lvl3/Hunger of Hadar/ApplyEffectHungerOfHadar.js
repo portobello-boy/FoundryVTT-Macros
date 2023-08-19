@@ -2,10 +2,13 @@
 
 console.log("-- APPLY EFFECT HUNGER OF HADAR --")
 
+const args = scope.args
+const item = scope.item
+
 // Store arguments
 const caster = await fromUuid(args[0].actorUuid)
-const spell = await fromUuid(args[0].itemUuid)
-const templateD = canvas.templates.get(args[0].templateId)
+const spell = await fromUuid(item.itemUuid)
+const templateD = await fromUuid(args[0].templateUuid)
 const concentrationId = args[0].itemUuid
 const targets = args[0].targets
 let hadarVictims = []
@@ -14,16 +17,16 @@ let ambientSoundIds = []
 // Retrieve values for template calculations
 const canvasGridSize = game.scenes.current.dimensions.size
 const canvasGridDistance = game.scenes.current.dimensions.distance
-const templateCenterX = templateD.data.x
-const templateCenterY = templateD.data.y
-const templateRadius = templateD.shape.radius
+const templateCenterX = templateD.x
+const templateCenterY = templateD.y
+const templateRadius = templateD.object.shape.radius
 const templateRadiusFeet = (templateRadius/canvasGridSize) * canvasGridDistance
 
 // Helper - Apply Blinded effect to target
 function addBlindness(target) {
   console.log(target)
   const actor = target.actor ? target.actor : game.actors.get(target.actorId)
-  const effects = actor.effects.filter(e => e.data.label == "Blinded")
+  const effects = actor.effects.filter(e => e.label == "Blinded")
 
   if (effects.length != 0) return
 
@@ -33,7 +36,7 @@ function addBlindness(target) {
 
 // Helper - Remove Blinded effect from target
 function removeBlindness(target) {
-  const effects = target.actor.effects.filter(e => e.data.label == "Blinded")
+  const effects = target.actor.effects.filter(e => e.label == "Blinded")
 
   if (effects.length != 0 && hadarVictims.includes(target.id)) {
     hadarVictims.splice(hadarVictims.indexOf(target.id), 1)
@@ -51,10 +54,10 @@ function getDistance(sourceX, sourceY, destX, destY) {
 // Helper - Get distance between token and Hunger of Hadar center
 function getDistanceFromSpellTemplate(token, templateD) {
   // Get token center coordinates
-  const tokenCenterX = token.data.x + (canvasGridSize * token.data.width) / 2
-  const tokenCenterY = token.data.y + (canvasGridSize * token.data.width) / 2
+  const tokenCenterX = token.x + (canvasGridSize * token.width) / 2
+  const tokenCenterY = token.y + (canvasGridSize * token.width) / 2
 
-  return getDistance(tokenCenterX, tokenCenterY, templateD.data.x, templateD.data.y)
+  return getDistance(tokenCenterX, tokenCenterY, templateD.x, templateD.y)
 }
 
 // Helper - Apply damage at the beginning of a token's turn
@@ -66,7 +69,7 @@ async function applyBeginTurnDamage(token) {
   if (distance > templateRadius) return
 
   // Push notification to game
-  ui.notifications.notify(`${token.data.name} beginning turn inside of Hunger of Hadar radius`)
+  ui.notifications.notify(`${token.name} beginning turn inside of Hunger of Hadar radius`)
 
   // Generate spell item based on conditions
   const itemData = mergeObject(duplicate(spell.data), {
@@ -78,9 +81,10 @@ async function applyBeginTurnDamage(token) {
             onUseMacroParts: null
         },
     },
-    data: {
+    system: {
       castedLevel: 0,
       level: 0,
+      components: { concentration: false },
       damage: { parts: [[`2d6`, "cold"]] },
       duration: {units: "inst", value: undefined},
       actionType: "other",
@@ -103,6 +107,9 @@ async function applyBeginTurnDamage(token) {
   const item = new CONFIG.Item.documentClass(itemData, { parent: caster });
   const options = { showFullCard: false, createWorkflow: true, versatile: false, configureDialog: false, targetUuids: [token.document.uuid] };
 
+  console.log(itemData)
+  console.log(item)
+
   // Submit to MidiQOL
   await MidiQOL.completeItemRoll(item, options);
 }
@@ -112,11 +119,13 @@ async function applyEndTurnDamage(token) {
   // Calculate distance from token to template center
   const distance = getDistanceFromSpellTemplate(token, templateD)
 
+  console.log(distance, token, templateD)
+
   // If not within radius of Hunger of Hadar, ignore
   if (distance > templateRadius) return
 
   // Push notification to game
-  ui.notifications.notify(`${token.data.name} has finished its turn inside of Hunger of Hadar radius`)
+  ui.notifications.notify(`${token.name} has finished its turn inside of Hunger of Hadar radius`)
 
   // Generate spell item based on conditions
   const itemData = mergeObject(duplicate(spell.data), {
@@ -128,9 +137,10 @@ async function applyEndTurnDamage(token) {
             onUseMacroParts: null
         },
     },
-    data: {
+    system: {
       castedLevel: 0,
       level: 0,
+      components: { concentration: false },
       damage: { parts: [[`2d6`, "acid"]] },
       duration: {units: "inst", value: undefined},
       actionType: "save",
@@ -204,8 +214,8 @@ async function applyEffect() {
 
     // Create Ambient Sounds
     const soundData = [{
-        x: templateD.data.x,
-        y: templateD.data.y,
+        x: templateD.x,
+        y: templateD.y,
         radius: templateRadiusFeet + 2*canvasGridDistance,
         path: "music/Sound%20Effects/Spells/hungerOfHadar/whispers.mp3",
         repeat: true,
@@ -216,8 +226,8 @@ async function applyEffect() {
         darkness: {min: 0, max: 1}
       },
       {
-        x: templateD.data.x,
-        y: templateD.data.y,
+        x: templateD.x,
+        y: templateD.y,
         radius: templateRadiusFeet + 2*canvasGridDistance,
         path: "music/Sound%20Effects/Spells/hungerOfHadar/squelching.mp3",
         repeat: true,
@@ -277,12 +287,12 @@ async function hook_templateDeleted(templateDocument) {
     // Remove hooks
     Hooks.off("preDeleteMeasuredTemplate", hookId_templateDeleted);
     Hooks.off("updateToken", hookId_updateToken);
-    Hooks.off("updateCombat", hookId_updateCombat);
+    Hooks.off("combatTurn", hookId_combatTurn);
 }
 
 async function hook_concentrationEnded(effect, render, id) {
     // If the concentration ending doesn't belong to the Hunger of Hadar spell, ignore
-    if (effect.data.origin != concentrationId) return
+    if (effect.origin != concentrationId) return
   
     // Delete the template
     canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [templateD.id]);
@@ -303,10 +313,18 @@ async function hook_tokenWithinTemplate(tokenDoc, delta, flags, actor) {
   }
 }
 
-async function hook_turnChangeDamage(combat, turn, delta, playerId) {
+async function hook_turnChangeDamage(combat, turn, delta) {
+  console.log("COMBAT")
+  console.log(combat)
+
+  console.log(combat.previous.tokenId, combat.current.tokenId)
+  console.log(await canvas.tokens.get(combat.previous.tokenId), await canvas.tokens.get(combat.current.tokenId))
+
   // Get current and previous combat tokens
-  const currentToken = canvas.tokens.get(combat.current.tokenId);
-  const previousToken = canvas.tokens.get(combat.previous.tokenId);
+  const previousToken = await canvas.tokens.get(combat.previous.tokenId);
+  const currentToken = await canvas.tokens.get(combat.current.tokenId);
+
+  console.log(previousToken, currentToken)
 
   // Check and apply damage to tokens
   await applyEndTurnDamage(previousToken);
@@ -317,7 +335,7 @@ async function hook_turnChangeDamage(combat, turn, delta, playerId) {
 const hookId_templateDeleted = Hooks.on("preDeleteMeasuredTemplate", (templateDocument) => hook_templateDeleted(templateDocument));
 const hookId_deleteActiveEffect = Hooks.on("deleteActiveEffect", (effect, render, id) => hook_concentrationEnded(effect, render, id));
 const hookId_updateToken = Hooks.on("updateToken", (tokenDoc, delta, flags, actor) => hook_tokenWithinTemplate(tokenDoc, delta, flags, actor));
-const hookId_updateCombat = Hooks.on("updateCombat", (combat, turn, delta, playerId) => hook_turnChangeDamage(combat, turn, delta, playerId));
+const hookId_combatTurn = Hooks.on("combatTurn", (combat, turn, delta) => hook_turnChangeDamage(combat, turn, delta));
 
 /*
     TODO:
